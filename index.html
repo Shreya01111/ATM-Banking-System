@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ATM Simulator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#eef5ff;color:#10233f}
+button,input{font:inherit}button{cursor:pointer;border:0}.hidden{display:none!important}
+.top{background:#071d3b;color:white;padding:18px 28px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:800;font-size:20px}.logo span{color:#46a3ff}
+.btn{padding:11px 18px;border-radius:9px;background:#126cff;color:#fff;font-weight:700}.btn.alt{background:white;color:#126cff;border:1px solid #126cff}
+.hero{min-height:calc(100vh - 65px);display:grid;place-items:center;padding:30px}
+.card{background:#fff;border-radius:18px;box-shadow:0 12px 35px #15345a18;padding:28px}
+.auth{width:min(440px,100%)}h1{margin:0 0 10px;font-size:32px}.muted{color:#6b7d95}.field{margin:14px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.field input{width:100%;padding:12px;border:1px solid #d5dfec;border-radius:9px;outline:none}.field input:focus{border-color:#126cff}
+.row{display:flex;gap:10px;flex-wrap:wrap}.full{width:100%}
+.app{display:grid;grid-template-columns:235px 1fr;min-height:100vh}.side{background:#071d3b;color:#dbe8f8;padding:22px 15px}.side h2{margin:0 8px 25px}.nav{display:block;width:100%;padding:12px;margin:5px 0;border-radius:9px;background:transparent;color:#dbe8f8;text-align:left}.nav.active,.nav:hover{background:#12345f}.main{padding:28px;max-width:1200px;width:100%;margin:auto}.welcome{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:20px}.balance{background:linear-gradient(135deg,#126cff,#0a3c93);color:white;border-radius:18px;padding:24px}.balance .amount{font-size:36px;font-weight:800;margin-top:8px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:18px}.tile{background:#fff;padding:20px;border-radius:15px;box-shadow:0 7px 25px #15345a10}.tile h3{margin-top:0}.section{margin-top:20px}.table{width:100%;border-collapse:collapse;background:white;border-radius:14px;overflow:hidden}.table th,.table td{padding:13px;text-align:left;border-bottom:1px solid #edf1f6;font-size:14px}.credit{color:#078b58;font-weight:700}.debit{color:#d33a4a;font-weight:700}.notice{padding:12px;border-radius:9px;margin:10px 0;background:#eef6ff}.danger{background:#fff0f1;color:#a51d2b}.success{background:#eafaf3;color:#08764b}
+@media(max-width:800px){.app{grid-template-columns:1fr}.side{position:static}.grid{grid-template-columns:1fr}.main{padding:18px}.welcome{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="auth">
+  <div class="top"><div class="logo">🏦 ATM <span>Simulator</span></div></div>
+  <div class="hero">
+    <div class="card auth">
+      <div id="loginBox">
+        <h1>Welcome Back</h1><p class="muted">Login with your demo card and PIN.</p>
+        <div id="authMsg"></div>
+        <div class="field"><label>Card Number</label><input id="loginCard" maxlength="16" placeholder="1234567890123456"></div>
+        <div class="field"><label>PIN</label><input id="loginPin" type="password" maxlength="4" placeholder="1234"></div>
+        <button class="btn full" onclick="login()">Login</button>
+        <p class="muted">Demo account: <b>1234567890123456</b> / <b>1234</b></p>
+        <button class="btn alt full" onclick="showRegister()">Create Demo Account</button>
+      </div>
+      <div id="registerBox" class="hidden">
+        <h1>Create Account</h1><p class="muted">Create a local demo ATM account.</p>
+        <div id="regMsg"></div>
+        <div class="field"><label>Full Name</label><input id="regName"></div>
+        <div class="field"><label>Card Number (16 digits)</label><input id="regCard" maxlength="16"></div>
+        <div class="field"><label>PIN (4 digits)</label><input id="regPin" type="password" maxlength="4"></div>
+        <div class="field"><label>Opening Balance</label><input id="regBalance" type="number" value="10000"></div>
+        <button class="btn full" onclick="register()">Create Account</button>
+        <button class="btn alt full" onclick="showLogin()">Back to Login</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <aside class="side">
+    <h2>🏦 ATM <span style="color:#46a3ff">Simulator</span></h2>
+    <button class="nav active" onclick="page('dashboard',this)">🏠 Dashboard</button>
+    <button class="nav" onclick="page('withdraw',this)">💵 Withdraw Cash</button>
+    <button class="nav" onclick="page('deposit',this)">💰 Deposit Cash</button>
+    <button class="nav" onclick="page('transfer',this)">🔄 Transfer Money</button>
+    <button class="nav" onclick="page('history',this)">📜 Transactions</button>
+    <button class="nav" onclick="page('pin',this)">🔐 Change PIN</button>
+    <button class="nav" onclick="logout()">🚪 Logout</button>
+  </aside>
+  <main class="main" id="content"></main>
+</div>
+
+<script>
+const KEY='atm_demo_accounts_v1';
+let accounts=JSON.parse(localStorage.getItem(KEY)||'null');
+if(!accounts){accounts={"1234567890123456":{name:"Demo User",pin:"1234",balance:48750,tx:[
+{id:"TX1004",type:"Deposit",amount:5000,after:48750,time:"Demo"},
+{id:"TX1003",type:"Withdrawal",amount:-2000,after:43750,time:"Demo"},
+{id:"TX1002",type:"Transfer",amount:-2500,after:45750,time:"Demo"},
+{id:"TX1001",type:"Deposit",amount:50000,after:48250,time:"Demo"}]}};save();}
+let current=null;
+function save(){localStorage.setItem(KEY,JSON.stringify(accounts))}
+function showRegister(){loginBox.classList.add('hidden');registerBox.classList.remove('hidden')}
+function showLogin(){registerBox.classList.add('hidden');loginBox.classList.remove('hidden')}
+function msg(id,text,ok=false){document.getElementById(id).innerHTML=`<div class="notice ${ok?'success':'danger'}">${text}</div>`}
+function register(){
+ let n=regName.value.trim(),c=regCard.value.trim(),p=regPin.value.trim(),b=Number(regBalance.value);
+ if(!n||!/^\d{16}$/.test(c)||!/^\d{4}$/.test(p)||b<0)return msg('regMsg','Please enter valid details.');
+ if(accounts[c])return msg('regMsg','That card number already exists.');
+ accounts[c]={name:n,pin:p,balance:b,tx:[]};save();msg('regMsg','Account created. You can now login.',true);setTimeout(showLogin,600);
+}
+function login(){
+ let c=loginCard.value.trim(),p=loginPin.value.trim(),a=accounts[c];
+ if(!a||a.pin!==p)return msg('authMsg','Invalid card number or PIN.');
+ current=c;auth.classList.add('hidden');app.classList.remove('hidden');page('dashboard',document.querySelector('.nav'));
+}
+function logout(){current=null;app.classList.add('hidden');auth.classList.remove('hidden');showLogin()}
+function money(x){return '₹'+Number(x).toLocaleString('en-IN',{minimumFractionDigits:2})}
+function addTx(type,amount){
+ let a=accounts[current];a.tx.unshift({id:'TX'+Date.now().toString().slice(-7),type,amount,after:a.balance,time:new Date().toLocaleString()});save();
+}
+function page(name,el){
+ document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active')); if(el)el.classList.add('active');
+ let a=accounts[current];
+ if(name==='dashboard')content.innerHTML=`<div class="welcome"><div><h1>Hello, ${a.name} 👋</h1><p class="muted">Welcome to your ATM dashboard.</p></div></div>
+ <div class="balance"><div>Available Balance</div><div class="amount">${money(a.balance)}</div><div>Card •••• ${current.slice(-4)}</div></div>
+ <div class="grid"><div class="tile"><h3>💵 Withdraw</h3><p class="muted">Take cash from your account.</p><button class="btn" onclick="page('withdraw')">Open</button></div>
+ <div class="tile"><h3>💰 Deposit</h3><p class="muted">Add money to your account.</p><button class="btn" onclick="page('deposit')">Open</button></div>
+ <div class="tile"><h3>📜 Mini Statement</h3><p class="muted">View recent activity.</p><button class="btn" onclick="page('history')">View</button></div></div>`;
+ if(name==='withdraw')formPage('Withdraw Cash','Amount to withdraw', 'withdraw');
+ if(name==='deposit')formPage('Deposit Cash','Amount to deposit','deposit');
+ if(name==='transfer')content.innerHTML=`<div class="card"><h1>Transfer Money</h1><p class="muted">Move demo funds to another demo account.</p><div id="actMsg"></div><div class="field"><label>Receiver Card Number</label><input id="toCard" maxlength="16"></div><div class="field"><label>Amount</label><input id="actAmount" type="number"></div><div class="field"><label>Remarks</label><input id="remarks"></div><button class="btn" onclick="transfer()">Transfer Money</button></div>`;
+ if(name==='history')historyPage();
+ if(name==='pin')content.innerHTML=`<div class="card"><h1>Change PIN</h1><div id="pinMsg"></div><div class="field"><label>Current PIN</label><input id="oldPin" type="password" maxlength="4"></div><div class="field"><label>New PIN</label><input id="newPin" type="password" maxlength="4"></div><div class="field"><label>Confirm New PIN</label><input id="newPin2" type="password" maxlength="4"></div><button class="btn" onclick="changePin()">Update PIN</button></div>`;
+}
+function formPage(title,label,type){content.innerHTML=`<div class="card"><h1>${title}</h1><p class="muted">${label}. Current balance: <b>${money(accounts[current].balance)}</b></p><div id="actMsg"></div><div class="row" style="margin:18px 0">${type==='withdraw'?[500,1000,2000,5000,10000].map(x=>`<button class="btn alt" onclick="actAmount.value=${x}">${money(x)}</button>`).join(''):''}</div><div class="field"><label>Custom Amount</label><input id="actAmount" type="number" min="1"></div><button class="btn" onclick="doAction('${type}')">${title}</button></div>`}
+function doAction(type){let a=accounts[current],n=Number(actAmount.value);if(!n||n<=0)return msg('actMsg','Enter a valid amount.');if(type==='withdraw'&&n>a.balance)return msg('actMsg','Insufficient balance.');a.balance+=type==='withdraw'?-n:n;addTx(type==='withdraw'?'Withdrawal':'Deposit',type==='withdraw'?-n:n);msg('actMsg',`${type==='withdraw'?'Withdrawal':'Deposit'} successful. New balance: ${money(a.balance)}`,true);actAmount.value='';}
+function transfer(){let a=accounts[current],to=toCard.value.trim(),n=Number(actAmount.value);if(!accounts[to])return msg('actMsg','Receiver account not found.');if(to===current)return msg('actMsg','Choose another account.');if(!n||n<=0||n>a.balance)return msg('actMsg','Enter a valid amount within your balance.');a.balance-=n;accounts[to].balance+=n;addTx('Transfer',-n);accounts[to].tx.unshift({id:'TX'+Date.now().toString().slice(-7),type:'Transfer Received',amount:n,after:accounts[to].balance,time:new Date().toLocaleString()});save();msg('actMsg',`Transfer successful. New balance: ${money(a.balance)}`,true)}
+function historyPage(){let a=accounts[current];content.innerHTML=`<div class="welcome"><div><h1>Transaction History</h1><p class="muted">Recent demo transactions.</p></div></div><div class="card"><table class="table"><tr><th>ID</th><th>Type</th><th>Amount</th><th>Balance</th><th>Time</th></tr>${a.tx.length?a.tx.map(t=>`<tr><td>${t.id}</td><td>${t.type}</td><td class="${t.amount>=0?'credit':'debit'}">${t.amount>=0?'+':''}${money(t.amount)}</td><td>${money(t.after)}</td><td>${t.time}</td></tr>`).join(''):'<tr><td colspan="5">No transactions yet.</td></tr>'}</table></div>`}
+function changePin(){let a=accounts[current];if(oldPin.value!==a.pin)return msg('pinMsg','Current PIN is incorrect.');if(!/^\d{4}$/.test(newPin.value)||newPin.value!==newPin2.value)return msg('pinMsg','New PIN must be 4 digits and match.');a.pin=newPin.value;save();msg('pinMsg','PIN changed successfully.',true);oldPin.value=newPin.value=newPin2.value=''}
+</script>
+</body></html>
